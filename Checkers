@@ -1,0 +1,531 @@
+#include<iostream>
+#include <conio.h>
+#include<vector>
+#include<fstream>
+#include<string>
+#include <windows.h>
+
+void sleep(unsigned milliseconds)
+{
+	Sleep(milliseconds);
+}
+
+using namespace std;
+
+void intro();
+void boardOut(char tab[8][8], int RoundCounter);
+void gameplay(char tab[8][8], int& roundCounter, int& draw2);
+int* coordinatesConverter(string word);
+int coordinatesChecker(int coordinates[2], char tab[8][8], char Player);
+int moves(int coordinates[2], char tab[8][8], char Player, int& roundCounter);
+bool win(char tab[8][8], int& draw1, int& roundCounter);
+
+int main() {
+	int RoundCounter, draw, Rematch;
+	intro();
+	fstream file;
+	string line;
+	
+	do
+	{
+		char board[8][8] = {{' ','O',' ','O',' ','O', ' ', 'O'},
+							{'O',' ','O',' ','O',' ', 'O', ' '},
+							{' ','O',' ','O',' ','O', ' ', 'O'},
+							{' ',' ',' ',' ',' ',' ', ' ', ' '},
+							{' ',' ',' ',' ',' ',' ', ' ', ' '},
+							{'X',' ','X',' ','X',' ', 'X', ' '},
+							{' ','X',' ','X',' ','X', ' ', 'X'},
+							{'X',' ','X',' ','X',' ', 'X', ' '} };
+
+		/*char board[8][8] = { {' ',' ',' ',' ',' ',' ', ' ', ' '},
+							{' ',' ',' ',' ',' ',' ', ' ', ' '},
+							{' ',' ',' ',' ',' ',' ', ' ', ' '},
+							{' ',' ',' ',' ',' ',' ', ' ', ' '},
+							{' ',' ',' ','O',' ',' ', ' ', ' '},
+							{' ',' ','X',' ',' ',' ', ' ', ' '},
+							{' ',' ',' ',' ',' ',' ', ' ', ' '},
+							{' ',' ',' ',' ',' ',' ', ' ', ' '} };*/
+		
+		RoundCounter = 0;
+		draw = 0;
+		while (win(board, draw, RoundCounter)) {
+			gameplay(board, RoundCounter, draw);
+			RoundCounter++;
+			if (draw == 0) system("cls");
+		}
+		cout << "Czy chcesz powtorzyc rozgrywke?\n0 - Nie\n1 - Tak\n";
+		cin >> Rematch;
+		system("cls");
+	} while (Rematch != 0);
+	cout << "Wyniki poprzednich rozgrywek: " << endl;
+	file.open("wyniki.txt");
+	while (!file.eof()) {
+		getline(file, line);
+		cout << line << endl;;
+	}
+	return 0;
+}
+void intro() {
+	cout << "Witaj w grze w warcaby!" << endl;
+	sleep(1500);
+	cout << "Gra zostala przygotowana na poczet zajec z Podstaw Informatyki" << endl;
+	sleep(2000);
+	cout << "Autorzy: Aleksander Rutkowski, Kacper Pawlik" << endl;
+	sleep(1500);
+	cout << "POWODZENIA!!";
+	sleep(1500);
+	system("cls");
+}
+void boardOut(char tab[8][8], int RoundCounter) {
+	string coordinates;
+	char x = 'A';
+	int y = 1;
+	cout << "    ";
+	for (int i = 0; i < 8; i++)
+	{
+		cout << x << "   ";
+		x += 1;
+	}cout << endl << "  +---+---+---+---+---+---+---+---+" << endl;
+	for (int i = 0; i < 8; i++) {
+		cout << y;
+		for (int j = 0; j < 8; j++) {
+			cout << " " << "| " << tab[i][j];
+			if(RoundCounter == 0) sleep(1);
+		}
+		y += 1;
+
+		cout << " |" << endl;
+		cout << "  +---+---+---+---+---+---+---+---+";
+		cout << endl;
+
+
+	}
+}
+void gameplay(char tab[8][8], int& roundCounter, int& draw2) {
+	char Player;
+	if (roundCounter % 2 == 0) {
+		Player = 'X';
+		cout << "\t    Tura gracza X\n" << endl;
+	}
+	else {
+		Player = 'O';
+		cout << "\t    Tura gracza O\n" << endl;
+	}
+	boardOut(tab, roundCounter);
+	string coordinates;
+	cout << "Podaj koordynaty pionka, ktorym chcesz sie poruszyc lub zaproponuj remis wpisujac \"remis\": ";
+	cin >> coordinates;
+	if (coordinates == "remis") {
+		draw2++;
+		return;
+	}
+	while (!coordinatesChecker(coordinatesConverter(coordinates), tab, Player)) {
+		cout << "Podaj ponownie koordynaty: ";
+		cin >> coordinates;
+	}
+	int* coordinates2 = coordinatesConverter(coordinates);
+	int tmp;
+	do {
+		tmp = moves(coordinates2, tab, Player, roundCounter);
+		if (tmp == 2 || tmp == 0) break;
+	} while (coordinatesChecker(coordinates2, tab, Player) == 2);
+	
+	
+}
+int* coordinatesConverter(string coordinates) {
+	int tab[2];
+	int letter = -1, number = 0;
+	if (coordinates[0] >= 65 && coordinates[0] <= 72) letter = coordinates[0] - 65;
+	else if (coordinates[0] >= 97 && coordinates[0] <= 104) letter = coordinates[0] - 97;
+	else cout << "Nieprawidlowe koordynaty\n";
+	if (coordinates[1] >= 49 && coordinates[1] <= 56) number = coordinates[1] - 49;
+	else if (letter != -1 && (coordinates[1] < 49 || coordinates[1] > 56)) cout << "Nieprawidlowe koordynaty\n";
+	//cout << endl << number << "\t" << letter;
+	tab[0] = letter;
+	tab[1] = number;
+	return tab;
+}
+int coordinatesChecker(int coordinates[2], char tab[8][8], char Player) {
+	int x = coordinates[0], y = coordinates[1];
+	int  flag = 0;
+
+	if ((Player == 'X' && (tab[y][x] == 'X' || tab[y][x] == '#')) || (Player == 'O' && tab[y][x] == '@') || (Player == 'X' && (tab[y-1][x+1] == 'O'|| tab[y - 1][x + 1] == '@' ))) {
+		if (y - 1 >= 0 && x + 1 < 8) { //w prawo do przodu, @ do tylu
+			if (tab[y - 1][x + 1] == ' ') flag = 1;
+			else if ((Player == 'X' && (tab[y - 1][x + 1] == 'O' || tab[y - 1][x + 1] == '@')) || (Player == 'O' && (tab[y - 1][x + 1] == 'X' || tab[y - 1][x + 1] == '#'))) {
+				if ((y - 2 >= 0 && x + 2 < 8) && tab[y - 2][x + 2] == ' ') flag = 2;
+			}
+		}
+
+		if (y - 1 >= 0 && x - 1 >= 0) { // w lewo do przodu, @ do tylu
+			if (tab[y - 1][x - 1] == ' ') flag = 1;
+			else if ((Player == 'X' && (tab[y - 1][x - 1] == 'O' || tab[y - 1][x - 1] == '@')) || (Player == 'O' && (tab[y - 1][x - 1] == 'X' || tab[y - 1][x - 1] == '#')) ) {
+				if ((y - 2 >= 0 && x - 2 >= 0) && tab[y - 2][x - 2] == ' ') flag = 2;
+			}
+		}
+	}
+
+	if ((Player == 'O' && (tab[y][x] == 'O' || tab[y][x] == '@')) || (Player == 'X' && tab[y][x] == '#')) {
+		if (y + 1 < 8 && x + 1 < 8) { // w prawo do przodu, # do tylu
+			if (tab[y + 1][x + 1] == ' ') flag = 1;
+			else if ((Player == 'O' && (tab[y + 1][x + 1] == 'X' || tab[y + 1][x + 1] == '#')) || (Player == 'X' && (tab[y + 1][x + 1] == 'O' || tab[y + 1][x + 1] == '@'))) {
+				if ((y + 2 < 8 && x + 2 < 8) && tab[y + 2][x + 2] == ' ') flag = 2;
+			}
+		}
+
+		if (y + 1 < 8 && x - 1 >= 0) { // w lewo do przodu, # do tylu
+			if (tab[y + 1][x - 1] == ' ') flag = 1;
+			else if ((Player == 'O' && (tab[y + 1][x - 1] == 'X' || tab[y + 1][x - 1] == '#')) || (Player == 'X' && (tab[y + 1][x - 1] == 'O' || tab[y + 1][x - 1] == '@'))) {
+				if ((y + 2 < 8 && x - 2 >= 0) && tab[y + 2][x - 2] == ' ') flag = 2;
+			}
+		}
+	}
+	if (flag == 0) cout << "Brak mozliwosci ruchu tym pionkiem.\n";
+	return flag;
+
+}
+int moves(int coordinates[2], char tab[8][8], char Player, int& roundCounter) {
+	int end=0;
+	int y = coordinates[1], x = coordinates[0], counter = 1, biciePX = 0, bicieLX = 0, biciePO = 0, bicieLO = 0;
+	int moveX = -1, moveY = -1, moveX2 = -1, moveY2 = -1, moveX3 = -1, moveY3 = -1, moveX4 = -1, moveY4 = -1;
+	char x1, y1, x2, y2;
+	cout << "Wybierz opcje ruchu: \n";
+	if (Player == 'X' || tab[y][x] == '@') {
+		if (y - 1 >= 0 && x + 1 < 8) {
+			if (tab[y - 1][x + 1] == ' ') { // w prawo 
+				x1 = x + 66;
+				y1 = y + 48;
+				cout << counter << ". mozliwosc ruchu w prawo do gory na pole: " << x1 << y1 << endl;
+				moveX = x + 1;
+				moveY = y - 1;
+				counter++;
+			}
+			else if ((Player == 'X' && (tab[y - 1][x + 1] == 'O' || tab[y - 1][x + 1] == '@')) || (tab[y][x] == '@' && (tab[y - 1][x + 1] == 'X' || tab[y - 1][x + 1] == '#'))) { // w prawo przod
+				if (tab[y - 2][x + 2] == ' ' && (y - 2 >= 0 && x + 2 < 8)) {
+					x1 = x + 67;
+					y1 = y + 47;
+					cout << counter << ". mozliwosc ruchu w prawo do gory na pole: " << x1 << y1 << endl;
+					moveX = x + 2;
+					moveY = y - 2;
+					biciePX++;
+					end = 1;
+					counter++;
+				}
+			}
+		}
+	
+
+		if (y - 1 >= 0 && x - 1 >= 0) {
+			if (tab[y - 1][x - 1] == ' ') { // w lewo 
+				x2 = x + 64;
+				y2 = y + 48;
+				cout << counter << ". mozliwosc ruchu w lewo do gory na pole: " << x2 << y2 << endl;
+				moveX2 = x - 1;
+				moveY2 = y - 1;
+				counter++;
+			}
+			else if ((Player == 'X' && (tab[y - 1][x - 1] == 'O' || tab[y - 1][x - 1] == '@')) || (tab[y][x] == '@' && (tab[y - 1][x - 1] == 'X' || tab[y - 1][x - 1] == '#'))) { // w lewo 
+				if (tab[y - 2][x - 2] == ' ' && (y - 2 >= 0 && x - 2 >= 0)) {
+					x2 = x + 63;
+					y2 = y + 47;
+					cout << counter << ". mozliwosc ruchu w lewo do gory na pole: " << x2 << y2 << endl;
+					moveX2 = x - 2;
+					moveY2 = y - 2;
+					bicieLX++;
+					end = 1;
+					counter++;
+				}
+			}
+		}
+	}
+	
+
+	if (Player == 'O' || tab[y][x] == '#') {
+		if (y + 1 < 8 && x + 1 < 8) {
+			if (tab[y + 1][x + 1] == ' ') { // w prawo 
+				x1 = x + 66;
+				y1 = y + 50;
+				cout << counter << ". Mozliwosc ruchu w prawo na dol na pole: " << x1 << y1 << endl;
+				if (tab[y][x] == '#' || tab[y][x] == '@') {
+					moveX3 = x + 1;
+					moveY3 = y + 1;
+				}
+				else {
+					moveX = x + 1;
+					moveY = y + 1;
+				}
+				counter++;
+			}
+			else if ((Player == 'O' && (tab[y + 1][x + 1] == 'X' || tab[y + 1][x + 1] == '#')) || (tab[y][x] == '#' && (tab[y + 1][x + 1] == 'O' || tab[y + 1][x + 1] == '@'))) { // w prawo przod
+				if (tab[y + 2][x + 2] == ' ' && (y + 2 < 8 && x + 2 < 8)) {
+					x1 = x + 67;
+					y1 = y + 51;
+					cout << counter << ". mozliwosc ruchu w prawo na dol na pole: " << x1 << y1 << endl;
+					if (tab[y][x] == '#' || tab[y][x] == '@') {
+						moveX3 = x + 2;
+						moveY3 = y + 2;
+					}
+					else {
+						moveX = x + 2;
+						moveY = y + 2;
+					}
+					counter++;
+					biciePO++;
+					end = 1;
+				}
+			}
+		}
+
+		if (y + 1 < 8 && x - 1 >= 0) {
+			if (tab[y + 1][x - 1] == ' ') { // w lewo przod
+				x2 = x + 64;
+				y2 = y + 50;
+				cout << counter << ". Mozliwosc ruchu w lewo na dol na pole: " << x2 << y2 << endl;
+				if (tab[y][x] == '#' || tab[y][x] == '@') {
+					moveX4 = x - 1;
+					moveY4 = y + 1;
+				}
+				else {
+					moveX2 = x - 1;
+					moveY2 = y + 1;
+				}
+				counter++;
+			}
+			else if ((Player == 'O' && (tab[y + 1][x - 1] == 'X' || tab[y + 1][x - 1] == '#')) || (tab[y][x] == '#' && (tab[y + 1][x - 1] == 'O' || tab[y + 1][x - 1] == '@'))) { // w lewo przod
+				if (tab[y + 2][x - 2] == ' ' && (y + 2 < 8 && x - 2 >= 0)) {
+					x2 = x + 63;
+					y2 = y + 51;
+					cout << counter << ". mozliwosc ruchu w lewo na dol na pole: " << x2 << y2 << endl;
+					if (tab[y][x] == '#' || tab[y][x] == '@') {
+						moveX4 = x - 2;
+						moveY4 = y + 2;
+					}
+					else {
+						moveX2 = x - 2;
+						moveY2 = y + 2;
+					}
+					bicieLO++;
+					counter++;
+					end = 1;
+				}
+			}
+		}
+		
+	}
+	if(coordinatesChecker(coordinates, tab, Player) != 2)cout << counter << ". Wybierz inny pionek" << endl;
+
+	if (Player == 'X') {
+		if (moveY == 0 || moveY2 == 0 || tab[y][x] == '#') Player = '#';
+	}
+
+	else if (Player == 'O') {
+		if (moveY == 7 || moveY2 == 7 || tab[y][x] == '@') Player = '@';
+	}
+
+	int move;
+	do {
+		cin >> move;
+		if (move < 1 || move >counter) cout << "Nieprawidlowy ruch!\n" << "Podaj ponowanie: ";
+	} while (move < 1 || move >counter);
+	if (move == counter) {
+		roundCounter--;
+		return 2;
+	}
+	else if (move == 1 && moveY != -1) { // do gory w prawo
+		tab[y][x] = ' ';
+		tab[moveY][moveX] = Player;
+		coordinates[0] = moveX;
+		coordinates[1] = moveY;
+		if (biciePX > 0) tab[y - 1][x + 1] = ' ';
+		if (biciePO > 0) tab[y + 1][x + 1] = ' ';
+
+
+	}
+	else if ((move == 1 && moveY2 != -1) || (moveY2 != -1 && move == 2)) { // do gory w lewo
+		tab[y][x] = ' ';
+		tab[moveY2][moveX2] = Player;
+		coordinates[0] = moveX2;
+		coordinates[1] = moveY2;
+		if (bicieLX > 0) tab[y - 1][x - 1] = ' ';
+		if (bicieLO > 0) tab[y + 1][x - 1] = ' ';
+	}
+	else if ((move == 1 && moveY3 != -1) || (move == 2 && moveY3 != -1) || (move == 3 && moveY3 != -1)) { // na dol w prawo
+		tab[y][x] = ' ';
+		tab[moveY3][moveX3] = Player;
+		coordinates[0] = moveX3;
+		coordinates[1] = moveY3;
+		if (biciePO > 0) tab[y + 1][x + 1] = ' ';
+	}
+	else if ((move == 1 && moveY4 != -1) || (move == 2 && moveY4 != -1) || (move == 3 && moveY4 != -1) || (move == 4 && moveY4 != -1)) { // na dol w lewo
+		tab[y][x] = ' ';
+		tab[moveY4][moveX4] = Player;
+		coordinates[0] = moveX4;
+		coordinates[1] = moveY4;
+		if (bicieLO > 0) tab[y + 1][x - 1] = ' ';
+	}
+	return end;
+}
+bool win(char tab[8][8], int& draw1, int& roundCounter) {
+	int kolko = 0, krzyzyk = 0, counterX = 0, counterO = 0;
+	int O_krolowka = 0, X_krolowka = 0, counter_XK = 0, counter_OK = 0;
+	int DrawOption;
+	ofstream results;
+	results.open("wyniki.txt", ios::app);
+	for (int i = 0; i < 8; i++) {
+		for (int j = 0; j < 8; j++) {
+			if (tab[i][j] == 'O') kolko++;
+			if (tab[i][j] == 'X') krzyzyk++;
+			if (tab[i][j] == '@') O_krolowka++;
+			if (tab[i][j] == '#') X_krolowka++;
+		}
+	}
+	if (kolko == 0 && O_krolowka == 0) {
+		cout << "Wygrywa krzyzyk po " << roundCounter << " ruchach!" << endl;
+		results << "Wygrana krzyzyka po " <<roundCounter<<" ruchach!"<< endl;
+		return false;
+	}
+	if (krzyzyk == 0 && X_krolowka == 0) {
+		cout << "Wygrywa kolko po " << roundCounter << " ruchach!" << endl;
+		results << "Wygrana kolka po " << roundCounter << " ruchach!" << endl;
+		return false;
+	}
+	//cout << "Ilosc kolek: " << kolko << ", Ilosc krzyzykow: " << krzyzyk <<", Ilosc malpek: "<<O_krolowka<<", Ilosc hasztagow: "<<X_krolowka<< endl;
+	for (int i = 0; i < 8; i++) {
+		for (int j = 0; j < 8; j++) {
+			if (tab[i][j] == 'X' || tab[i][j] == '#' || tab[i][j] == '@') {
+				if (i - 1 >= 0 && j + 1 < 8) {//w prawo X
+					if (((tab[i][j] == 'X' || tab[i][j] == '#') && (tab[i - 1][j + 1] == 'O' || tab[i - 1][j + 1] == '@')) || (tab[i][j] == '@' && (tab[i - 1][j + 1] == 'X' || tab[i - 1][j + 1] == '#'))) {
+						if ((i - 2 >= 0 && j + 2 < 8) && tab[i - 2][j + 2] != ' ') {
+							if (tab[i][j] == 'X') counterX++;
+							else if (tab[i][j] == '#') counter_XK++;
+							else counter_OK++;
+						}
+						else if (i - 2 < 0 || j + 2 >= 8) {
+							if (tab[i][j] == 'X') counterX++;
+							else if (tab[i][j] == '#') counter_XK++;
+							else counter_OK++;
+						}
+					}
+					else if (((tab[i][j] == 'X' || tab[i][j] == '#') && (tab[i - 1][j + 1] == 'X' || tab[i - 1][j - 1] == '#')) || (tab[i][j] == '@' && (tab[i - 1][j + 1] == 'O' || tab[i - 1][j - 1] == '@'))) {
+						if (tab[i][j] == 'X') counterX++;
+						else if (tab[i][j] == '#') counter_XK++;
+						else counter_OK++;
+					}
+				}
+				else {
+					if (tab[i][j] == 'X') counterX++;
+					else if (tab[i][j] == '#') counter_XK++;
+					else counter_OK++;
+				}
+
+				if (i - 1 >= 0 && j - 1 >= 0) {//w lewo X
+					if (((tab[i][j] == 'X' || tab[i][j] == '#') && (tab[i - 1][j - 1] == 'O' || tab[i - 1][j - 1] == '@')) || (tab[i][j] == '@' && (tab[i - 1][j - 1] == 'X' || tab[i - 1][j - 1] == '#'))) {
+						if ((i - 2 >= 0 && j - 2 >= 0) && tab[i - 2][j - 2] != ' ') {
+							if (tab[i][j] == 'X') counterX++;
+							else if (tab[i][j] == '#') counter_XK++;
+							else counter_OK++;
+						}
+						else if (i - 2 < 0 || j - 2 < 0) {
+							if (tab[i][j] == 'X') counterX++;
+							else if (tab[i][j] == '#') counter_XK++;
+							else counter_OK++;
+						}
+					}
+					else if (((tab[i][j] == 'X' || tab[i][j] == '#') && (tab[i - 1][j - 1] == 'X' || tab[i - 1][j - 1] == '#')) || (tab[i][j] == '@' && (tab[i - 1][j - 1] == 'O' || tab[i - 1][j - 1] == '@'))) {
+						if (tab[i][j] == 'X') counterX++;
+						else if (tab[i][j] == '#') counter_XK++;
+						else counter_OK++;
+					}
+				}
+				else {
+					if (tab[i][j] == 'X') counterX++;
+					else if (tab[i][j] == '#') counter_XK++;
+					else counter_OK++;
+				}
+			}
+			if (tab[i][j] == 'O' || tab[i][j] == '#' || tab[i][j] == '@') {
+				if (i + 1 < 8 && j + 1 < 8) {//w prawo O
+					if (((tab[i][j] == 'O' || tab[i][j] == '@') && (tab[i + 1][j + 1] == 'X' || tab[i + 1][j + 1] == '#')) || (tab[i][j] == '#' && (tab[i + 1][j + 1] == 'O' || tab[i + 1][j + 1] == '@'))) {
+						if ((i + 2 < 8 && j + 2 < 8) && tab[i + 2][j + 2] != ' ') {
+							if (tab[i][j] == 'O') counterO++;
+							else if (tab[i][j] == '@') counter_OK++;
+							else counter_XK++;
+						}
+						else if (i + 2 >= 8 || j + 2 >= 8) {
+							if (tab[i][j] == 'O') counterO++;
+							else if (tab[i][j] == '@') counter_OK++;
+							else counter_XK++;
+						}
+					}
+					else if (((tab[i][j] == 'O' || tab[i][j] == '@') && (tab[i + 1][j + 1] == 'O' || tab[i + 1][j + 1] == '@')) || (tab[i][j] == '#' && (tab[i + 1][j + 1] == 'X' || tab[i + 1][j + 1] == '#'))) {
+						if (tab[i][j] == 'O') counterO++;
+						else if (tab[i][j] == '@') counter_OK++;
+						else counter_XK++;
+					}
+				}
+				else {
+					if (tab[i][j] == 'O') counterO++;
+					else if (tab[i][j] == '@') counter_OK++;
+					else counter_XK++;
+				}
+
+				if (i + 1 < 8 && j - 1 >= 0) { //w lewo O
+					if (((tab[i][j] == 'O' || tab[i][j] == '@') && (tab[i + 1][j - 1] == 'X' || tab[i + 1][j - 1] == '#')) || (tab[i][j] == '#') && (tab[i + 1][j - 1] == 'O' || tab[i + 1][j - 1] == '@')) {
+						if ((i + 2 < 8 && j - 2 >= 0) && tab[i + 2][j - 2] != ' ') {
+							if (tab[i][j] == 'O') counterO++;
+							else if (tab[i][j] == '@') counter_OK++;
+							else counter_XK++;
+						}
+						else if (i + 2 >= 8 || j - 2 < 0) {
+							if (tab[i][j] == 'O') counterO++;
+							else if (tab[i][j] == '@') counter_OK++;
+							else counter_XK++;
+						}
+					}
+					else if (((tab[i][j] == 'O' || tab[i][j] == '@') && (tab[i + 1][j - 1] == 'O' || tab[i + 1][j - 1] == '@')) || (tab[i][j] == '#' && (tab[i + 1][j - 1] == 'X' || tab[i + 1][j - 1] == '#'))) {
+						if (tab[i][j] == 'O') counterO++;
+						else if (tab[i][j] == '@') counter_OK++;
+						else counter_XK++;
+					}
+				}
+				else {
+					if (tab[i][j] == 'O') counterO++;
+					else if (tab[i][j] == '@') counter_OK++;
+					else counter_XK++;
+				}
+			}
+		}
+	}
+	//cout << "Blokady dla X: " << counterX << ", Blokady dla O: " << counterO <<endl<<"Blokady dla malpek: "<<counter_OK<<", Blokady dla hasztagow: "<<counter_XK<< endl;
+
+	if (counterO == (2 * kolko) && counter_OK == (4 * O_krolowka)) {
+		cout << "Wygrywa krzyzyk po " << roundCounter << " ruchach!" << endl;
+		results << "Wygrana krzyzyka po " << roundCounter << " ruchach!" << endl;
+		return false;
+	}
+	if (counterX == (2 * krzyzyk) && counter_XK == (4 * X_krolowka)) {
+		cout << "Wygrywa kolko po " << roundCounter << " ruchach!" << endl;
+		results << "Wygrana kolka po " << roundCounter << " ruchach!" << endl;
+		return false;
+	}
+	if (draw1 == 1) {
+		if (roundCounter % 2 == 0) cout << "\t    Tura gracza X\n" << endl;
+		else cout << "\t    Tura gracza O\n" << endl;
+		cout << "akceptujesz remis\?\n0 - Nie\n1 - Tak" << endl;
+		cin >> DrawOption;
+		if (DrawOption == 1) {
+			//system("cls");
+			cout << "Gra konczy sie remisem po " << roundCounter << " ruchach, gratulacje!" << endl;
+			results << "Gra zakonczona sie remisem po " << roundCounter << " ruchach!" << endl;
+			return false;
+		}
+		else if (DrawOption == 0) {
+			system("cls");
+			roundCounter--;
+			draw1--;
+			return true;
+		}
+	}
+	results.close();
+	return true;
+}
